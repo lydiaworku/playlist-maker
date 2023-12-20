@@ -8,11 +8,11 @@ from random import randint
 import random
 
 
-app = Flask(__name__, template_folder='templates')
-CORS(app)
+app = Flask(__name__, template_folder='templates') # implements the flask backend into the app
+CORS(app) # takes care of a CORS issue with spotify api
 
 
-CLIENT_ID = "523af5a59f764c14971ce95056ea5ea6"
+CLIENT_ID = "523af5a59f764c14971ce95056ea5ea6" # storing of API credentials
 CLIENT_SECRET = "520e80e828dd491cb0721e1c40095852"
 REDIRECT_URI = "http://127.0.0.1:5000/playlist"
 
@@ -70,43 +70,34 @@ def callback():
 
 
 
-def current_month():
-    today = date.today()
-    number_month = today.month
-    year = str(today.year)
-    months = {1: "january", 2: "february", 3: "march", 4: "april", 5: "may", 6: "june", 7: "july", 8: "august", 9: "september", 10: "october", 11: "november", 12: "december"}
-    month = months.get(number_month)
-    month_year = month + " " + year
-    return month_year + " playlist"
+def my_playlist_name():  # gets the month and year for the title of the playlist
+    name = "playlist maker"
+    return name # will add a number when firebase is implemented
 
 
     
 class SongPicker:
 
     def __init__(self):
-        self.saved_list = []
-        self.short_list = []
-        self.medium_list = []
-        self.long_list = []
-        self.top_list = []
+        self.saved_list = [] # list of user's saved songs 
+        self.short_list = [] # short term top streamed (4 weeks)
+        self.medium_list = [] # medium term top streamed (6 months)
+        self.long_list = [] # long term top streamed (all time)
+        self.top_list = [] # all lists combined
 
-    def saved_songs(self):
+    def saved_songs(self): # gets 23 random songs from last 50 saved songs 
         saved = sp.current_user_saved_tracks(limit=50)
         random_saved_nums = []
         for item in range(23):
             num = randint(0, 49)
             if num not in random_saved_nums:
                 random_saved_nums.append(num)
-        #print(' ')
-        #print('SAVED')
-        #print(' ')
-        #print(random_saved_nums)
         for item in random_saved_nums:
             self.saved_list.append(saved['items'][item]['track']['uri'])
-        #print(self.saved_list)
 
 
-    def top_songs(self):
+
+    def top_songs(self): # gets songs from top streamed songs
 
         short_top = sp.current_user_top_tracks(limit=50, time_range='short_term')
         short_nums = []
@@ -114,14 +105,12 @@ class SongPicker:
             num = randint(0, 49)
             if num not in short_nums:
                 short_nums.append(num)
-        #print(' ')
-        #print('SHORT')
-        #print(' ')
-        #print(short_nums)
+
+
         for item in short_nums:
             if short_top['items'][item]['uri'] not in self.saved_list:
                 self.short_list.append(short_top['items'][item]['uri'])
-        #print(self.short_list)
+
 
 
         medium_top = sp.current_user_top_tracks(limit=50, time_range='medium_term')
@@ -130,14 +119,11 @@ class SongPicker:
             num = randint(0, 39)
             if num not in medium_nums:
                 medium_nums.append(num)
-        #print(' ')
-        #print('MEDIUM')
-        #print(' ')
-        #print(medium_nums)
+
         for item in medium_nums:
             if medium_top['items'][item]['uri'] not in self.saved_list and medium_top['items'][item]['uri'] not in self.short_list:
                 self.medium_list.append(medium_top['items'][item]['uri'])
-        #print(self.medium_list)
+
 
 
         long_top = sp.current_user_top_tracks(limit=50, time_range='long_term')
@@ -146,14 +132,11 @@ class SongPicker:
             num = randint(0, 24)
             if num not in long_nums:
                 long_nums.append(num)
-        #print(' ')
-        #print('LONG')
-        #print(' ')
-        #print(long_nums)
+
         for item in long_nums:
             if long_top['items'][item]['uri'] not in self.saved_list and long_top['items'][item]['uri'] not in self.short_list and long_top['items'][item]['name'] not in self.medium_list:
                 self.long_list.append(long_top['items'][item]['uri'])
-        #print(self.long_list)
+
 
 
         for item in self.saved_list:
@@ -170,11 +153,6 @@ class SongPicker:
 
 
 
-        #print(' ')
-        #print('TOP LIST')
-        #print(str(len(self.top_list)) + ' songs')
-        #print(' ')
-        #print(self.top_list)
         global playlist_length
         playlist_length = len(self.top_list)
         global global_top_list
@@ -186,23 +164,17 @@ class SongPicker:
             
 
 
-def new_playlist(name):
+def new_playlist(name): # creates a playlist for the user
     playlist = sp.user_playlist_create(sp.user(username)["id"], name, public=True)
     return playlist
 
 
-def add_songs(playlist_id, track_uris):
+def add_songs(playlist_id, track_uris): #adds the songs to the playlist
     sp.user_playlist_add_tracks(sp.user(username)["id"], playlist_id, track_uris)
     return playlist_id
 
-def delete_songs(playlist_id, items):
-    sp.user_playlist_remove_specific_occurrences_of_tracks(sp.user(username)["id"], playlist_id, items)
 
-def reorder_songs(playlist_id, range_start, insert_before):
-    sp.user_playlist_reorder_tracks(sp.user(username)["id"], playlist_id, range_start, insert_before)
-    return ("hello" + playlist_id)
-
-def shuffle_songs(playlist_id, items):
+def shuffle_songs(playlist_id, items): # shuffles the order of the songs on the playlist
     results = sp.playlist_tracks(playlist_id)
     items = results['items']
     random.shuffle(items)
@@ -213,7 +185,7 @@ def shuffle_songs(playlist_id, items):
 @app.route('/playlist', methods=['GET']) 
 def main():
 
-    playlist_name = current_month()
+    playlist_name = my_playlist_name()
 
     playlist = new_playlist(playlist_name)
 
@@ -226,7 +198,6 @@ def main():
     
     shuffle_songs(playlist["id"], global_top_list)
 
-    #reorder_songs(playlist["id"], playlist_length - 1, 0)
 
     name='playlist maker'
 
@@ -234,10 +205,8 @@ def main():
 
     print(link)
 
-    #print("Access Token:", access_token)
-    #print("Refresh Token:", refresh_token)
 
-    print(sp.user(username)["id"])
+
     print(sp.current_user()["id"])
     print('LENGTH: ')
     print(playlist_length)
